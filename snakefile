@@ -1,3 +1,4 @@
+# Snakefile
 configfile: "config.yaml"
 
 reads1 = config["reads1"]
@@ -63,13 +64,14 @@ rule abundance:
         r1="trimmed/sample_R1_paired.fastq",
         r2="trimmed/sample_R2_paired.fastq"
     output:
-        "abundance_data.tsv"
+        bam="aln.bam",
+        depth="abundance_data.tsv"
     shell:
         """
         bowtie2-build {input.contigs} contigs_index
-        bowtie2 -x contigs_index -1 {input.r1} -2 {input.r2} | samtools view -bS - | samtools sort -o aln.bam
-        samtools index aln.bam
-        jgi_summarize_bam_contig_depths --outputDepth {output} aln.bam
+        bowtie2 -x contigs_index -1 {input.r1} -2 {input.r2} | samtools view -bS - | samtools sort -o {output.bam}
+        samtools index {output.bam}
+        jgi_summarize_bam_contig_depths --outputDepth {output.depth} {output.bam}
         """
 
 rule coverage:
