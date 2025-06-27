@@ -1,21 +1,19 @@
-# Snakefile
+# Snakefile (с использованием IQ-TREE вместо RAxML)
 configfile: "config.yaml"
 
 reads1 = config["reads1"]
 reads2 = config["reads2"]
 adapter_file = config["adapter_file"]
 
+bins = glob_wildcards("maxbin_output/bin.{binid}.fasta")
+
 rule all:
     input:
         "qc_reports/fastqc_done.txt",
         "spades_output/contigs.fasta",
         "abundance_data.tsv",
-        "maxbin_output/contig_bins.fasta",
-        "coverage.tsv",
-        "blobtools_output/plots/blobtools_plot.png",
-        "selected_bin/fungal_bin.fasta",
-        "busco_output/fungal/fungi_full_table.tsv",
-        "busco_output/parasitic_fungi/parasitic_fungi_full_table.tsv",
+        expand("maxbin_output/bin.{binid}.fasta", binid=bins.binid),
+        expand("busco_output/bin.{binid}/short_summary.specific.fungi_odb10.txt", binid=bins.binid),
         "super_tree_output.tre",
         "report/summary_report.md"
 
@@ -87,76 +85,57 @@ rule maxbin:
         contigs="spades_output/contigs.fasta",
         abund="abundance_data.tsv"
     output:
-        "maxbin_output/contig_bins.fasta"
-    shell:
-        "run_MaxBin.pl -contig {input.contigs} -out maxbin_output -abund {input.abund}"
-
-rule blobtools:
-    input:
-        contigs="maxbin_output/contig_bins.fasta",
-        coverage="coverage.tsv",
-        taxonomy="taxonomy.tsv"
-    output:
-        "blobtools_output/plots/blobtools_plot.png"
+        expand("maxbin_output/bin.{i:03}.fasta", i=range(1, 6))
     shell:
         """
-        blobtools create -i {input.contigs} -c {input.coverage} -t {input.taxonomy} --taxrule best --out blobtools_output/
-        blobtools plot -i blobtools_output.blobDB.json -o blobtools_output/plots/
+        run_MaxBin.pl -contig {input.contigs} -out maxbin_output/bin -abund {input.abund}
         """
 
-rule select_fungal_bin:
+rule busco:
     input:
-        "blobtools_output/blobtools_plot.png"
+        "maxbin_output/bin.{binid}.fasta"
     output:
-        "selected_bin/fungal_bin.fasta"
-    shell:
-        """
-        blobtools filter -i blobtools_output.blobDB.json -x Fungi -o selected_bin/fungal_bin.fasta
-        """
-
-rule busco_fungi:
-    input:
-        "selected_bin/fungal_bin.fasta"
-    output:
-        "busco_output/fungal/fungi_full_table.tsv"
+        "busco_output/bin.{binid}/short_summary.specific.fungi_odb10.txt"
     params:
-        lineage="fungi_odb10"
+        lineage="fungi_odb10",
+        outdir="busco_output/bin.{binid}"
     shell:
-        "busco -i {input} -l {params.lineage} -o busco_output/fungal -m genome"
+        "busco -i {input} -l {params.lineage} -o {params.outdir} -m genome"
 
-rule busco_parasitic_fungi:
+rule align_bins:
     input:
-        "selected_bin/fungal_bin.fasta"
+        expand("maxbin_output/bin.{binid}.fasta", binid=bins.binid)
     output:
-        "busco_output/parasitic_fungi/parasitic_fungi_full_table.tsv"
-    params:
-        lineage="parasitic_fungi_odb10"
+        "aligned_bins.fasta"
     shell:
-        "busco -i {input} -l {params.lineage} -o busco_output/parasitic_fungi -m genome"
+        """
+        cat {input} > concatenated_bins.fasta
+        mafft --auto concatenated_bins.fasta > {output}
+        """
 
 rule phylogenomics:
     input:
-        "busco_output/fungal/fungi_full_table.tsv"
+        "aligned_bins.fasta"
     output:
         "super_tree_output.tre"
     shell:
         """
-        mafft --auto selected_bin/fungal_bin.fasta > aligned_sequences.fasta
-        raxmlHPC -s aligned_sequences.fasta -n phylogenetic_tree -m PROTGAMMAJTT -p 12345
-        java -jar astral.jar -i gene_trees.tre -o super_tree_output.tre
+        iqtree2 -s {input} -m MFP -bb 1000 -nt AUTO -pre iqtree_output
+        cp iqtree_output.treefile {output}
         """
 
 rule report:
     input:
-        busco="busco_output/fungal/fungi_full_table.tsv",
+        summaries=expand("busco_output/bin.{binid}/short_summary.specific.fungi_odb10.txt", binid=bins.binid),
         tree="super_tree_output.tre"
     output:
         "report/summary_report.md"
     shell:
         """
         echo "# Pipeline Summary Report" > {output}
-        echo "\n## BUSCO Results" >> {output}
-        tail -n 20 {input.busco} >> {output}
+        echo "\n## BUSCO Summaries" >> {output}
+        for f in {input.summaries}; do echo "\n### $$f" >> {output}; tail -n 10 $$f >> {output}; done
         echo "\n## Phylogenetic Tree File" >> {output}
         echo "Tree saved as: {input.tree}" >> {output}
         """
+
