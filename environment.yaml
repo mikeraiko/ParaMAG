@@ -1,22 +1,17 @@
 name: paramag
 channels:
-  - conda-forge
   - bioconda
-  - defaults
+  - conda-forge
 dependencies:
-  - python=3.8
+  - python=3.10
   - snakemake
-  - fastqc
-  - trimmomatic
   - spades
   - maxbin2
   - busco
   - mafft
   - trimal
   - iqtree
-  - blast
-  - java-jdk  # For ASTRAL
-  - pandas  # Required for Python scripting in Snakemake
-  - matplotlib  # For optional plotting
-  - tqdm  # For progress bars (optional)
-
+  - raxml
+  - blobtoolkit
+  - fastqc
+  - trimmomatic
