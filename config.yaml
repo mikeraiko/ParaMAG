@@ -1,0 +1,3 @@
+reads1: "input_reads/sample_R1.fastq"
+reads2: "input_reads/sample_R2.fastq"
+adapter_file: "adapters.fa"
