@@ -47,13 +47,14 @@ def run_pipeline(args):
 
 def run_example():
     print("[INFO] Downloading and running example dataset...")
-    subprocess.run(["git", "clone", "https://github.com/mikeraiko/ParaMAG.git", "example_run"], check=True)
-    os.chdir("example_run")
-    subprocess.run(["conda", "env", "create", "-f", "environment.yml"], check=True)
-    subprocess.run(["python", "cli_wrapper.py", "--reads1", "example_data/sample_R1.fastq",
+  #  os.mkdir("example_run")
+  #  os.chdir("example_run")
+    subprocess.run(["python", "paramag.py", "--reads1", "example_data/sample_R1.fastq",
                     "--reads2", "example_data/sample_R2.fastq",
                     "--adapter-file", "adapters.fa",
                     "--threads", "4"])
+
+
 
 
 def main():
