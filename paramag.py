@@ -34,7 +34,7 @@ def run_pipeline(args):
         "snakemake",
         "--cores", str(args.threads),
         "--use-conda",
-        "--snakefile", "Snakefile",
+        "--snakefile", "snakefile",
         "--configfile", config_path,
         "--rerun-incomplete",
         "--printshellcmds",
