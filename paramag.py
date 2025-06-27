@@ -65,6 +65,10 @@ def main():
     parser.add_argument("--threads", type=int, default=4, help="Number of threads to use")
     parser.add_argument("--example", action="store_true", help="Run pipeline on included example dataset")
 
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+
     args = parser.parse_args()
 
     if args.example:
